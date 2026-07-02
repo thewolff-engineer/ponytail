@@ -96,6 +96,20 @@ function getDefaultMode() {
   return DEFAULT_MODE;
 }
 
+// True once a default has been set explicitly (env var or config file) —
+// distinguishes "user chose full" from "nobody's ever configured this."
+function hasConfiguredDefault() {
+  const envMode = process.env.PONYTAIL_DEFAULT_MODE;
+  if (envMode && VALID_MODES.includes(envMode.toLowerCase())) return true;
+
+  try {
+    const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf8').replace(/^﻿/, ''));
+    return Boolean(config.defaultMode && VALID_MODES.includes(config.defaultMode.toLowerCase()));
+  } catch (e) {
+    return false;
+  }
+}
+
 function writeDefaultMode(mode) {
   const normalized = normalizeConfigMode(mode);
   if (!normalized) return null;
@@ -119,5 +133,6 @@ module.exports = {
   normalizeConfigMode,
   normalizePersistedMode,
   isDeactivationCommand,
+  hasConfiguredDefault,
   writeDefaultMode,
 };

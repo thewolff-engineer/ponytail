@@ -113,6 +113,22 @@ assert.equal(
   'full',
 );
 
+// First run: no PONYTAIL_DEFAULT_MODE and no config.json yet — nudge Claude to
+// ask via AskUserQuestion and persist the answer, instead of silently defaulting.
+const home3 = path.join(temp, 'home3');
+fs.mkdirSync(home3, { recursive: true });
+result = run('ponytail-activate.js', { HOME: home3, USERPROFILE: home3 });
+assert.equal(result.status, 0, result.stderr);
+assert.match(result.stdout, /PONYTAIL FIRST RUN/);
+
+// Once a config.json exists, the nudge must not fire again.
+const config3Path = path.join(home3, '.config', 'ponytail', 'config.json');
+fs.mkdirSync(path.dirname(config3Path), { recursive: true });
+fs.writeFileSync(config3Path, JSON.stringify({ defaultMode: 'lite' }));
+result = run('ponytail-activate.js', { HOME: home3, USERPROFILE: home3 });
+assert.equal(result.status, 0, result.stderr);
+assert.doesNotMatch(result.stdout, /PONYTAIL FIRST RUN/);
+
 // CLAUDE_CONFIG_DIR overrides ~/.claude for the flag file (issue #34).
 const home2 = path.join(temp, 'home2');
 fs.mkdirSync(home2, { recursive: true });

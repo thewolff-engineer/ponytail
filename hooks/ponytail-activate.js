@@ -4,11 +4,13 @@
 // Runs on every session start:
 //   1. Writes flag file at $CLAUDE_CONFIG_DIR/.ponytail-active (defaults to ~/.claude; statusline reads this)
 //   2. Emits ponytail ruleset as hidden SessionStart context
+//   2b. If no default level is configured yet, nudges Claude to ask once via
+//       AskUserQuestion and persist the answer to the config file
 //   3. Detects missing statusline config and emits setup nudge
 
 const fs = require('fs');
 const path = require('path');
-const { getDefaultMode, getClaudeDir, isShellSafe } = require('./ponytail-config');
+const { getDefaultMode, getConfigPath, hasConfiguredDefault, getClaudeDir, isShellSafe } = require('./ponytail-config');
 const { getPonytailInstructions } = require('./ponytail-instructions');
 const {
   clearMode,
@@ -40,6 +42,24 @@ try {
 
 // 2. Emit the ponytail ruleset, filtered to the active intensity level.
 let output = getPonytailInstructions(mode);
+
+// 2b. No default configured yet — nudge Claude to ask once and persist the answer.
+if (!isCodex && !isCopilot && !hasConfiguredDefault()) {
+  output += "\n\n" +
+    "PONYTAIL FIRST RUN: No default level is configured for this user yet " +
+    "(running at the built-in default, '" + mode + "', for now). Before doing " +
+    "anything else this session, use AskUserQuestion to ask which Ponytail level " +
+    "they want as their persistent default. Include a one-line explanation: " +
+    "Ponytail is a lazy-senior-dev mode that forces the simplest solution that " +
+    "works (reuse existing code, stdlib/native features, and dependencies already " +
+    "installed, before writing anything new). Options: lite, full, ultra, off " +
+    "(lite = light touch, full = the standard ladder enforced, ultra = maximally " +
+    "aggressive simplification, off = disabled). If the question is dismissed " +
+    "with no selection, treat that as 'off'. Once answered, write " +
+    JSON.stringify({ defaultMode: '<answer>' }) + " to " + getConfigPath() +
+    " (creating parent directories as needed) so this is never asked again, and " +
+    "adopt that level as your effective mode for the rest of this session.";
+}
 
 // 3. Detect missing statusline config — nudge Claude to help set it up
 if (!isCodex && !isCopilot) try {
